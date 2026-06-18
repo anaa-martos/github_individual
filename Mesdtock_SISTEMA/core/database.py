@@ -2,6 +2,7 @@ import mysql.connector
 from mysql.connector import Error
 from bd_config import DB_CONFIG
 
+# CONECTA AO BANCO DE DADOS DO SISTEMA
 class conectar_banco:
     @staticmethod
     def connect():

@@ -1,0 +1,270 @@
+{% extends 'tela_home.html' %}
+
+{% block conteudo %}
+<title>Histórico</title>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tela_entrada.css') }}">
+
+<div class="container">
+
+    <!-- Conteúdo -->
+    <main class="content">
+
+        <div class="header">
+            <div>
+                <h1>Movimentação</h1>
+                <p>Entrada e saída</p>
+            </div>
+
+            <div class="header-right">
+
+                <div class="filtros-card">
+            
+                    <div class="filtro-item">
+                        <i class="bi bi-funnel-fill"></i>
+                        <span>Filtros:</span>
+                    </div>
+            
+                    <form method="GET"
+                          action="{{ url_for('tela_movimentacao') }}"
+                          class="filtros-form">
+            
+                        <!-- PRODUTO -->
+                        <select name="produto"
+                                onchange="this.form.submit()">
+            
+                            <option value="">
+                                Todos os produtos
+                            </option>
+            
+                            {% for produto in produtos_filtro %}
+                            <option value="{{ produto.produto }}"
+                                {% if produto_selecionado == produto.produto %}
+                                selected
+                                {% endif %}>
+            
+                                {{ produto.produto }}
+            
+                            </option>
+                            {% endfor %}
+            
+                        </select>
+            
+                        <!-- TIPO -->
+                        <select name="tipo"
+                                onchange="this.form.submit()">
+            
+                            <option value="">
+                                Todos os tipos
+                            </option>
+            
+                            <option value="ENTRADA"
+                                {% if tipo_selecionado == 'ENTRADA' %}
+                                selected
+                                {% endif %}>
+                                📥 Entrada
+                            </option>
+            
+                            <option value="SAIDA"
+                                {% if tipo_selecionado == 'SAIDA' %}
+                                selected
+                                {% endif %}>
+                                📤 Saída
+                            </option>
+            
+                        </select>
+            
+                        <!-- FORNECEDOR/CLIENTE -->
+                        <select name="fornecedor"
+                                onchange="this.form.submit()">
+            
+                            <option value="">
+                                Todos os fornecedores/clientes
+                            </option>
+            
+                            {% for item in fornecedores_filtro %}
+                            <option value="{{ item.nome }}"
+                                {% if fornecedor_selecionado == item.nome %}
+                                selected
+                                {% endif %}>
+            
+                                {{ item.nome }}
+            
+                            </option>
+                            {% endfor %}
+            
+                        </select>
+            
+                    </form>
+            
+                </div>
+            
+                <input type="text"
+                       id="inputBusca"
+                       placeholder="Buscar...">
+            
+            </div>
+        </div>
+
+        <!-- ALERTAS -->
+        {% with mensagens = get_flashed_messages(with_categories=true) %}
+        {% if mensagens %}
+
+        {% for categoria, msg in mensagens %}
+
+        <div class="custom-alert alert-{{ categoria }} alert-flash animate__animated animate__fadeIn" role="alert">
+
+            <div class="alert-content">
+
+                {% if categoria == 'success' %}
+                <i class="bi bi-check-circle-fill alert-icon"></i>
+
+                {% elif categoria == 'danger' or categoria == 'error' %}
+                <i class="bi bi-exclamation-triangle-fill alert-icon"></i>
+
+                {% else %}
+                <i class="bi bi-info-circle-fill alert-icon"></i>
+
+                {% endif %}
+
+                <span class="alert-text">
+                    {{ msg }}
+                </span>
+
+            </div>
+
+        </div>
+
+        {% endfor %}
+
+        {% endif %}
+        {% endwith %}
+
+        <!-- TABELA -->
+        <table>
+
+            <thead>
+
+                <tr>
+                    <th>Tipo</th>
+                    <th>Produto</th>
+                    <th>Fornecedor/Cliente</th>
+                    <th>Quantidade</th>
+                    <th>Valor</th>
+                    <th>Data de Processamento</th>
+                </tr>
+
+            </thead>
+
+            <tbody id="tabelaDados">
+
+                {% for item in movimentacoes %}
+
+                <tr>
+
+                    <!-- TIPO -->
+                    <!-- TIPO -->
+                    <td>
+
+                        {% if item.tipo == 'ENTRADA' %}
+
+                        <span class="tipo tipo-entrada">
+                            Entrada
+                        </span>
+
+                        {% else %}
+
+                        <span class="tipo tipo-saida">
+                            Saída
+                        </span>
+
+                        {% endif %}
+
+                    </td>
+
+                    <!-- PRODUTO -->
+                    <td>
+                        {{ item.produto }}
+                    </td>
+
+                    <!-- FORNECEDOR / CLIENTE -->
+                    <td>
+
+                        {% if item.fornecedor %}
+
+                        {{ item.fornecedor }}
+
+                        {% else %}
+
+                        {{ item.cliente }}
+
+                        {% endif %}
+
+                    </td>
+
+                    <!-- QUANTIDADE -->
+                    <td>
+
+                        {% if item.tipo == 'ENTRADA' %}
+
+                        <span class="text-success" id="tipo-entrada">
+                            +{{ item.quantidade }}
+                        </span>
+
+                        {% else %}
+
+                        <span class="text-danger" id="tipo-saida">
+                            -{{ item.quantidade }}
+                        </span>
+
+                        {% endif %}
+
+                    </td>
+
+                    <!-- VALOR -->
+                    <td>
+                        R$ {{ item.valor_total }}
+                    </td>
+
+                    <!-- DATA -->
+                    <td>
+
+                        <span class="data">
+
+                            {{ item.data_mov.strftime('%d/%m/%Y') }}
+
+                        </span>
+
+                    </td>
+
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </main>
+
+</div>
+
+<script>
+    document.getElementById("inputBusca").addEventListener("keyup", function () {
+        let filtro = this.value.toLowerCase();
+        let linhas = document.querySelectorAll("#tabelaDados tr");
+        linhas.forEach(function (linha) {
+            let nomeProduto = linha.cells[1].textContent.toLowerCase();
+            let nomeCliFor = linha.cells[2].textContent.toLowerCase();
+            if (nomeProduto.includes(filtro) ||
+            nomeCliFor.includes(filtro)) {
+            linha.style.display = "";
+        } else {
+            linha.style.display = "none";
+        }
+
+    });
+
+    });
+</script>
+{% endblock %}

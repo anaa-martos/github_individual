@@ -1,9 +1,11 @@
 from core.crud_base import Crudmedstock
 from core.database import conectar_banco
 from core.validador import Validador
+from core.seguranca import gerar_hash_senha, verificar_senha
+
+#! = Feito pela -- Ana Beatriz // 𖹭.ᐟ/
 
 #============================ CLASSE CLIENTE =========================
-# feito por Ana Beatriz
 
 class Cliente(Crudmedstock):
     table = "cliente"
@@ -12,13 +14,15 @@ class Cliente(Crudmedstock):
         "email",
         "cpf",
         "senha",
+        "status"
     ]
 
-    def __init__(self, nome, email, cpf, senha):
+    def __init__(self, nome, email, cpf, senha, status):
         self.nome = nome
         self.email = email
         self.cpf = cpf
         self.senha = senha
+        self.status = status
 
 #=============================VALIDAÇÃO==============================
     def validate(self):
@@ -35,65 +39,77 @@ class Cliente(Crudmedstock):
         ]
         return [erro for erro in erros if erro]
 #===========================================================
+    @classmethod
+    def deletar_cliente(cls, id):
+        cliente = cls.seleciona_por_id(id)
+        if not cliente:
+            raise ValueError("Cliente não encontrado.")
+        '''if cls.has_related_records(id): #! atencao
+            raise ValueError("Não é possível excluir o produto porque ele possui pedidos ou movimentações vinculadas.")'''
+        cls.delete(id)
 
 
-# FINALIZAR
+    def inserir_usuario(self, dados):
+        """
+        Cadastra um usuário criptografando a senha com bcrypt.
+        """
+        self.senha = gerar_hash_senha(self.senha)
+        return self.insert()
 
-'''    @classmethod
-    def low_stock(cls):
-        conexao = Database.connect()
+    # SELECIONA TUDO POR EMAIL
+    @classmethod
+    def seleciona_por_email(cls, email):
+        conexao = conectar_banco.connect()
         cursor = conexao.cursor(dictionary=True)
         try:
-            sql = "SELECT * FROM produto WHERE quantidade <= estoque_minimo ORDER BY nome"
-            cursor.execute(sql)
-            return cursor.fetchall()
+            sql = f"SELECT * FROM {cls.table} WHERE email = %s"
+            cursor.execute(sql, (email,))
+            return cursor.fetchone()
         finally:
             cursor.close()
             conexao.close()
 
-    @classmethod
-    def update_quantity(cls, id, nova_quantidade, connection=None):
-        conexao = connection or Database.connect()
-        cursor = conexao.cursor()
-        try:
-            sql = "UPDATE produto SET quantidade = %s WHERE id = %s"
-            cursor.execute(sql, (nova_quantidade, id))
-            if connection is None:
-                conexao.commit()
-            return cursor.rowcount
-        except Exception:
-            if connection is None:
-                conexao.rollback()
-            raise
-        finally:
-            cursor.close()
-            if connection is None:
-                conexao.close()
+    def atualizar_usuario(self, id_usuario, dados):
+        """
+        Atualiza usuário.
+        Caso venha uma nova senha, criptografa antes de salvar.
+        """
+        senha = dados.get("senha")
+
+        if senha:
+            dados["senha"] = gerar_hash_senha(senha)
+        else:
+            dados.pop("senha", None)
+
+        self.atualizar(id_usuario, dados)
 
     @classmethod
-    def has_related_records(cls, id):
-        conexao = Database.connect()
-        cursor = conexao.cursor()
-        try:
-            queries = [
-                "SELECT COUNT(*) FROM movimentacao WHERE produto_id = %s",
-                "SELECT COUNT(*) FROM pedido_movimentacao WHERE produto_id = %s"
-            ]
-            total = 0
-            for sql in queries:
-                cursor.execute(sql, (id,))
-                total += cursor.fetchone()[0]
-            return total > 0
-        finally:
-            cursor.close()
-            conexao.close()
+    def autenticar(cls, email, senha):
+        """
+        Verifica se o usuário existe e se a senha está correta.
+        """
+        conexao = conectar_banco.connect()
+        cursor = conexao.cursor(dictionary=True)
 
-    @classmethod
-    def safe_delete(cls, id):
-        produto = cls.find_by_id(id)
-        if not produto:
-            raise ValueError("Produto não encontrado.")
-        if cls.has_related_records(id):
-            raise ValueError("Não é possível excluir o produto porque ele possui pedidos ou movimentações vinculadas.")
-        cls.delete(id)
-        '''
+        sql = """
+            SELECT *
+            FROM cliente
+            WHERE email = %s
+            AND status = 'ativo'
+        """
+
+        cursor.execute(sql, (email,))
+        usuario = cursor.fetchone()
+
+        cursor.close()
+        conexao.close()
+
+        if usuario is None:
+            return None
+
+        senha_banco = usuario["senha"]
+
+        if verificar_senha(senha, senha_banco):
+            return usuario
+
+        return None

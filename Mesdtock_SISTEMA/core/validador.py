@@ -1,7 +1,10 @@
 import requests
 import urllib.parse
+
+# = Feito pela -- Ana Beatriz //
+
     #==================== CLASSE - VALIDAÇÃO poo=========================
-# feito por Ana Beatriz
+
 class Validador:
 
     #NÃO DEVE SER VAZIO=========================
@@ -105,8 +108,6 @@ class Validador:
         except (TypeError, ValueError):
             return f"O campo {field_name} é obrigatório"
         return None
-
-
 
 #=================VALIDAÇÃO EXTERNA=========================
     #Valida email externamente==============================

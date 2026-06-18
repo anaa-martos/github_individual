@@ -1,50 +1,119 @@
-'''from core.crud_base import CrudBase
-from core.database import Database
-from core.validator import Validator
+from core.crud_base import Crudmedstock
+from core.database import conectar_banco
+from core.validador import Validador
 
-class Produto(CrudBase):
+#! = Feito pela -- Ana Beatriz //  𖹭.ᐟ
+
+#============================ CLASSE PRODUTO =========================
+
+class Produto(Crudmedstock):
     table = "produto"
     fields = [
+        "fornecedor_id",
         "nome",
         "quantidade_estoque",
         "categoria",
+        "estoque_minimo",
         "preco_custo",
         "preco_venda",
+        "ativo"
     ]
 
-    def __init__(self, nome, quantidade_estoque, categoria, preco_custo,
-                 preco_venda,):
+    def __init__(self, fornecedor_id, nome, quantidade_estoque, categoria, estoque_minimo, preco_custo,
+                 preco_venda, ativo=True):
+        self.fornecedor_id = fornecedor_id
         self.nome = nome
         self.quantidade_estoque = quantidade_estoque
         self.categoria = categoria
+        self.estoque_minimo = estoque_minimo
         self.preco_custo = preco_custo
         self.preco_venda = preco_venda
+        self.ativo = ativo
 
 
+#============================ VALIDAÇÃO =========================
     def validate(self):
         erros = [
-            Validator.required(self.nome, "nome"),
-            Validator.non_negative(self.quantidade, "quantidade"),
-            Validator.non_negative(self.estoque_minimo, "estoque mínimo"),
-            Validator.non_negative(self.preco_custo, "preço de custo"),
-            Validator.non_negative(self.preco_venda, "preço de venda")
+            Validador.obrigatorio(self.nome, "nome"),
+            Validador.obrigatorio(self.quantidade_estoque, "quantidade_estoque"),
+            Validador.nao_negativo(self.quantidade_estoque, "quantidade_estoque"),
+            Validador.nao_negativo(self.preco_custo, "preço de custo"),
+            Validador.obrigatorio(self.preco_custo, "preço de custo"),
+            Validador.nao_negativo(self.preco_venda, "preço de venda"),
+            Validador.obrigatorio(self.preco_venda, "preço de venda"),
+            Validador.nao_negativo(self.estoque_minimo, "estoque_minimo"),
+            Validador.obrigatorio(self.estoque_minimo, "estoque_minimo"),
         ]
         return [erro for erro in erros if erro]
 
+
     @classmethod
-    def low_stock(cls):
-        conexao = Database.connect()
+    def seleciona_todos_produtos(cls):
+        conexao = conectar_banco.connect()
         cursor = conexao.cursor(dictionary=True)
+
         try:
-            sql = "SELECT * FROM produto WHERE quantidade <= estoque_minimo ORDER BY nome"
+            sql = """
+            SELECT
+                p.*,
+                f.nome_fornecedor
+            FROM produto p
+            LEFT JOIN fornecedor f
+                ON p.fornecedor_id = f.id
+            WHERE p.ativo = TRUE
+            ORDER BY p.nome
+            """
+
             cursor.execute(sql)
             return cursor.fetchall()
+
         finally:
             cursor.close()
             conexao.close()
 
     @classmethod
-    def update_quantity(cls, id, nova_quantidade, connection=None):
+    def deletar_produto(cls, id):
+        conexao = conectar_banco.connect()
+        cursor = conexao.cursor()
+
+        try:
+            sql = """
+            UPDATE produto
+            SET ativo = FALSE
+            WHERE id = %s
+            """
+            cursor.execute(sql, (id,))
+            conexao.commit()
+
+        finally:
+            cursor.close()
+            conexao.close()
+
+    @classmethod
+    def seleciona_por_fornecedor(cls, fornecedor_id):
+
+        conexao = conectar_banco.connect()
+        cursor = conexao.cursor(dictionary=True)
+
+        try:
+
+            sql = """
+SELECT *
+FROM produto
+WHERE fornecedor_id = %s
+AND ativo = TRUE
+ORDER BY nome
+"""
+
+            cursor.execute(sql, (fornecedor_id,))
+            return cursor.fetchall()
+
+        finally:
+            cursor.close()
+            conexao.close()
+
+    @classmethod
+    def upd_quantidade(cls, id, nova_quantidade, connection=None):
         conexao = connection or Database.connect()
         cursor = conexao.cursor()
         try:
@@ -63,29 +132,25 @@ class Produto(CrudBase):
                 conexao.close()
 
     @classmethod
-    def has_related_records(cls, id):
-        conexao = Database.connect()
-        cursor = conexao.cursor()
+    def seleciona_por_id_com_fornecedor(cls, id):
+        conexao = conectar_banco.connect()
+        cursor = conexao.cursor(dictionary=True)
+
         try:
-            queries = [
-                "SELECT COUNT(*) FROM movimentacao WHERE produto_id = %s",
-                "SELECT COUNT(*) FROM pedido_movimentacao WHERE produto_id = %s"
-            ]
-            total = 0
-            for sql in queries:
-                cursor.execute(sql, (id,))
-                total += cursor.fetchone()[0]
-            return total > 0
+            sql = """
+SELECT
+    p.*,
+    f.nome_fornecedor
+FROM produto p
+LEFT JOIN fornecedor f
+    ON p.fornecedor_id = f.id
+WHERE p.id = %s
+AND p.ativo = TRUE
+"""
+
+            cursor.execute(sql, (id,))
+            return cursor.fetchone()
+
         finally:
             cursor.close()
             conexao.close()
-
-    @classmethod
-    def safe_delete(cls, id):
-        produto = cls.find_by_id(id)
-        if not produto:
-            raise ValueError("Produto não encontrado.")
-        if cls.has_related_records(id):
-            raise ValueError("Não é possível excluir o produto porque ele possui pedidos ou movimentações vinculadas.")
-        cls.delete(id)
-'''

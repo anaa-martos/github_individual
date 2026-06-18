@@ -1,0 +1,353 @@
+{% extends 'tela_home.html' %}
+
+{% block conteudo %}
+<link rel="icon" href="{{ url_for('static', filename='favicon.png') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tela_produtos.css') }}">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<div id="container">
+
+    <main id="content">
+
+        <div id="header">
+
+            <div class="header-left">
+                <h1>Produtos</h1>
+                <i id="icon" class="bi bi-capsule-pill"></i>
+            </div>
+            
+
+
+            <div class="header-right">
+                <div class="filtros-card">
+
+                    <div class="filtro-item">
+                        <i class="bi bi-funnel-fill"></i>
+                        <span>Filtros:</span>
+                    </div>
+                
+                    <form method="GET" action="{{ url_for('tela_produtos') }}" class="filtros-form">
+                
+                        <select name="fornecedor_id" onchange="this.form.submit()">
+                            <option value="">Todos os fornecedores</option>
+                
+                            {% for fornecedor in fornecedores %}
+                            <option value="{{ fornecedor.id }}"
+                                {% if fornecedor_selecionado == fornecedor.id|string %}selected{% endif %}>
+                                {{ fornecedor.nome_fornecedor }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                
+                        <select name="estoque" onchange="this.form.submit()">
+                            <option value="">Todos os produtos</option>
+                            <option value="baixo" {% if estoque_selecionado == 'baixo' %}selected{% endif %}>⚠ Estoque baixo</option>
+                            <option value="normal" {% if estoque_selecionado == 'normal' %}selected{% endif %}>✅ Estoque alto</option>
+                        </select>
+                
+                    </form>
+                
+                </div>
+
+                <input type="text" id="inputBusca" placeholder="Buscar...">
+                <a href="{{ url_for('tela_cadastro_produto') }}" class="btn btn-cadastro">
+                    <i class="bi bi-plus-lg me-2"></i> Cadastrar Novo Produto
+                </a>
+            </div>
+
+
+        </div>
+        {% with mensagens = get_flashed_messages(with_categories=true) %}
+        {% if mensagens %}
+        {% for categoria, msg in mensagens %}
+        <div class="custom-alert alert-{{ categoria }} alert-flash animate__animated animate__fadeIn" role="alert">
+            <div class="alert-content">
+                {% if categoria == 'success' %}
+                <i class="bi bi-check-circle-fill alert-icon"></i>
+                {% elif categoria == 'danger' or categoria == 'error' %}
+                <i class="bi bi-exclamation-triangle-fill alert-icon"></i>
+                {% else %}
+                <i class="bi bi-info-circle-fill alert-icon"></i>
+                {% endif %}
+                <span class="alert-text">{{ msg }}</span>
+            </div>
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+        <table>
+            <thead>
+                <tr>
+                    <th id="table_titulo" colspan="10">Estoque de Produtos</th>
+
+
+                </tr>
+                <tr >
+                    <th>Id</th>
+                    <th>Nome</th>
+                    <th>Fornecedor</th>
+                    <th>categoria</th>
+                    <th>Quantidade</th>
+                    <th>Estoque Mínimo</th>
+                    <th>Preço Venda</th>
+                    <th colspan="">Ações</th>
+                    <th colpsan="">Solicitar</th>
+                </tr>
+            </thead>
+            {% for produto in produtos %}
+            <tbody id="tabelaDados">
+
+                <tr class="linha-produto"
+                data-id="{{ produto.id }}"
+                data-nome="{{ produto.nome }}"
+                data-fornecedor="{{ produto.fornecedor.nome_fornecedor }}"
+                data-categoria="{{ produto.categoria }}"
+                data-estoque="{{ produto.quantidade_estoque }}"
+                data-minimo="{{ produto.estoque_minimo }}"
+                data-preco="{{ '%.2f'|format(produto.preco_venda) }}">
+                    <td>{{ produto.id }}</td>
+
+                    <td>{{ produto.nome }}</td>
+                    <td>{{ produto.fornecedor.nome_fornecedor.split()[:2] | join(' ') }}</td>
+                
+                    <td>{{ produto.categoria }}</td>
+                    <td id="quantidade" class="{% if produto.quantidade_estoque <= produto.estoque_minimo %}estoque-baixo{% endif %}"> {% if produto.quantidade_estoque <= produto.estoque_minimo %}
+                    <i class="bi bi-exclamation-triangle-fill text-danger" title="Estoque baixo"></i> {% endif %}{{ produto.quantidade_estoque }}</td>
+                    <td id="estoque_minimo">{{ produto.estoque_minimo }}</td>
+                    <td class="preco-venda">
+                        <span class="moeda">R$</span>
+                        <span>{{ '%.2f'|format(produto.preco_venda) }}</span>
+                    </td>
+                    <td class="acoes">
+
+                        <a class="btn-acao btn-editar" href="{{ url_for('editar_produto', id=produto.id) }}">
+                            <i class="bi bi-pencil-square"></i>
+                            Editar
+                        </a>
+
+                        <a class="btn-acao btn-excluir" href="{{ url_for('excluir_produto', id=produto.id) }}">
+                            <i class="bi bi-trash3-fill"></i>
+                            Excluir
+                        </a>
+                    </td>
+
+                    <td class="solicitar">
+                        <a class="btn-acao btn-entrada"
+                            href="{{ url_for('novo_pedido', tipo='entrada', id=produto.id) }}">
+                            <i class="bi bi-box-arrow-in-down"></i>
+                            Entrada
+                        </a>
+
+                        <a class="btn-acao btn-saida"
+                            href="{{ url_for('novo_pedido_saida', tipo='saida', id=produto.id) }}">
+                            <i class="bi bi-box-arrow-up"></i>
+                            Saída
+                        </a>
+                    </td>
+
+                </tr>
+                <tr class="detalhes-row">
+                    <td colspan="9">
+                
+                        <div class="detalhes-produto">
+                
+                            <div class="produto-header">
+                                
+                
+                                <i class="bi bi-box-seam icone-categoria"><span>  {{ produto.categoria }}</span>
+                
+                                <div id="linha-mais">
+                                    <h3>{{ produto.nome }}</h3>
+                                    <div class="imagem-produto">
+
+                                        {% if produto.categoria == "Respiratórios" %}
+                                            <i class="bi bi-lungs-fill"></i>
+                                    
+                                        {% elif produto.categoria == "Analgésicos" %}
+                                            <i class="bi bi-capsule-pill"></i>
+                                    
+                                        {% elif produto.categoria == "Materiais Hospitalares" %}
+                                            <i class="bi bi-hospital"></i>
+                                    
+                                        {% else %}
+                                            <i class="bi bi-capsule"></i>
+                                        {% endif %}
+                                    
+                                    </div>
+                                </div>
+                                </i>
+                                
+                
+                            </div>
+                
+                            <div class="detalhes-grid">
+                
+                                <div class="card-info">
+                                    <i class="bi bi-truck"></i>
+                                    <span>{{ produto.fornecedor.nome_fornecedor }}</span>
+                                </div>
+                
+                                <div class="card-info">
+                                    <i class="bi bi-tags"></i>
+                                    <span>{{ produto.categoria }}</span>
+                                </div>
+                
+                                <div class="card-info">
+                                    <i class="bi bi-box-seam"></i>
+                                    <span>{{ produto.quantidade_estoque }} unidades</span>
+                                </div>
+                
+                                <div class="card-info">
+                                    <i class="bi bi-exclamation-triangle"></i>
+                                    <span>Mínimo: {{ produto.estoque_minimo }}</span>
+                                </div>
+                
+                                <div class="card-info">
+                                    <i class="bi bi-currency-dollar"></i>
+                                    <span>R$ {{ '%.2f'|format(produto.preco_venda) }}</span>
+                                </div>
+                
+                            </div>
+                
+                        </div>
+                
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+       
+
+    </main>
+</div>
+
+
+<script>
+document.getElementById("inputBusca").addEventListener("keyup", function () {
+
+let filtro = this.value.toLowerCase();
+
+document.querySelectorAll(".linha-produto").forEach(function(linha){
+
+    let nomeProduto = linha.cells[1].textContent.toLowerCase();
+    let nomeFornecedor = linha.cells[2].textContent.toLowerCase();
+
+    let detalhes = linha.nextElementSibling;
+
+    if(nomeProduto.includes(filtro) || nomeFornecedor.includes(filtro)){
+        linha.style.display = "";
+        if(detalhes){
+            detalhes.style.display = "";
+        }
+    }else{
+        linha.style.display = "none";
+        if(detalhes){
+            detalhes.style.display = "none";
+        }
+    }
+
+});
+
+});
+</script>
+
+
+<script>
+
+    document.querySelectorAll(".linha-produto").forEach(linha => {
+    
+        linha.addEventListener("click", function(e){
+    
+            if(e.target.closest("a")){
+                return;
+            }
+    
+            const detalhes =
+                this.nextElementSibling.querySelector(".detalhes-produto");
+    
+            const icone =
+                detalhes.querySelector(".icone-categoria");
+    
+            const categoria = this.dataset.categoria;
+    
+            let classe = "bi-box-seam";
+    
+            switch(categoria){
+    
+                case "Analgésicos":
+                    classe = "bi-capsule-pill";
+                    break;
+    
+                case "Anti-inflamatórios":
+                    classe = "bi-capsule";
+                    break;
+    
+                case "Antibióticos":
+                    classe = "bi-virus";
+                    break;
+    
+                case "Antialérgicos":
+                    classe = "bi-bandaid";
+                    break;
+    
+                case "Gastrointestinais":
+                    classe = "bi-cup-hot";
+                    break;
+    
+                case "Cardiovasculares":
+                    classe = "bi-heart-pulse";
+                    break;
+    
+                case "Antidiabéticos":
+                    classe = "bi-droplet";
+                    break;
+    
+                case "Respiratórios":
+                    classe = "bi-lungs";
+                    break;
+    
+                case "Dermatológicos":
+                    classe = "bi-eyedropper";
+                    break;
+    
+                case "Vitaminas e Suplementos":
+                    classe = "bi-heart";
+                    break;
+    
+                case "Medicamentos Controlados":
+                    classe = "bi-shield-lock";
+                    break;
+    
+                case "Vacinas":
+                    classe = "bi-shield-check";
+                    break;
+    
+                case "Materiais Hospitalares":
+                    classe = "bi-hospital";
+                    break;
+    
+                case "EPIs":
+                    classe = "bi-person-badge";
+                    break;
+    
+                default:
+                    classe = "bi-box-seam";
+            }
+    
+            icone.className = "bi " + classe + " icone-categoria";
+    
+            document.querySelectorAll(".detalhes-produto").forEach(item => {
+                if(item !== detalhes){
+                    item.classList.remove("ativo");
+                }
+            });
+    
+            detalhes.classList.toggle("ativo");
+    
+        });
+    
+    });
+    
+    </script>
+{% endblock %}
