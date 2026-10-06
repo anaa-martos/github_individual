@@ -1,2 +1,0 @@
-# medstock_individual
-
